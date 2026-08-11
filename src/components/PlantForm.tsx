@@ -61,13 +61,23 @@ export default function PlantForm({ plant }: { plant?: Plant }) {
   }
 
   async function handleIdentify() {
-    if (!photoFile) return;
+    if (!photoFile && !existingPhotoUrl) return;
     setIdentifying(true);
     setIdentifyError(null);
     setCandidates(null);
 
     try {
-      const compressed = await compressImage(photoFile);
+      let sourceFile = photoFile;
+      if (!sourceFile && existingPhotoUrl) {
+        const res = await fetch(existingPhotoUrl);
+        const blob = await res.blob();
+        sourceFile = new File([blob], "existing-photo.jpg", {
+          type: blob.type || "image/jpeg",
+        });
+      }
+      if (!sourceFile) return;
+
+      const compressed = await compressImage(sourceFile);
       const body = new FormData();
       body.append("image", compressed, "photo.jpg");
 
@@ -202,7 +212,7 @@ export default function PlantForm({ plant }: { plant?: Plant }) {
             />
           </label>
 
-          {photoFile && (
+          {(photoFile || existingPhotoUrl) && (
             <button
               type="button"
               onClick={handleIdentify}
