@@ -94,14 +94,28 @@ export default async function PlantDetailPage({
         </ul>
       </div>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex items-center justify-between gap-2">
         <h2 className="text-lg font-semibold text-stone-800">성장 타임라인</h2>
-        <Link
-          href={`/plants/${p.id}/logs/new`}
-          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
-        >
-          + 기록 추가
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/plants/${p.id}/compare`}
+            className="rounded-lg border border-stone-300 px-2.5 py-2 text-xs font-medium text-stone-600"
+          >
+            전/후 비교
+          </Link>
+          <Link
+            href={`/plants/${p.id}/rhythm`}
+            className="rounded-lg border border-stone-300 px-2.5 py-2 text-xs font-medium text-stone-600"
+          >
+            연간 리듬
+          </Link>
+          <Link
+            href={`/plants/${p.id}/logs/new`}
+            className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
+          >
+            + 기록
+          </Link>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-4">
