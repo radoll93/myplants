@@ -8,6 +8,7 @@ import { generateId } from "@/lib/id";
 import { GROWTH_TYPES, LIGHT_LEVELS } from "@/lib/types";
 import type { GrowthType, LightLevel, Plant } from "@/lib/types";
 import type { SpeciesCandidate } from "@/app/api/identify-species/route";
+import ImageCropper from "./ImageCropper";
 
 function extractStoragePath(url: string): string | null {
   const marker = "/plant-photos/";
@@ -52,12 +53,23 @@ export default function PlantForm({ plant }: { plant?: Plant }) {
   const [candidates, setCandidates] = useState<SpeciesCandidate[] | null>(null);
   const [identifyError, setIdentifyError] = useState<string | null>(null);
 
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState("photo.jpg");
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    setCropSrc(URL.createObjectURL(file));
+    setCropFileName(file.name);
+    e.target.value = "";
+  }
+
+  function handleCropDone(file: File) {
     setPhotoFile(file);
-    setPhotoPreview(file ? URL.createObjectURL(file) : existingPhotoUrl);
+    setPhotoPreview(URL.createObjectURL(file));
     setCandidates(null);
     setIdentifyError(null);
+    setCropSrc(null);
   }
 
   async function handleIdentify() {
@@ -360,6 +372,15 @@ export default function PlantForm({ plant }: { plant?: Plant }) {
           {submitting ? statusText : isEdit ? "수정 완료" : "등록하기"}
         </button>
       </form>
+
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          fileName={cropFileName}
+          onCancel={() => setCropSrc(null)}
+          onDone={handleCropDone}
+        />
+      )}
     </main>
   );
 }

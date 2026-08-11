@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/image";
 import { generateId } from "@/lib/id";
 import { EVENT_TAGS, type EventTag } from "@/lib/types";
+import ImageCropper from "@/components/ImageCropper";
 
 export default function NewLogPage({
   params,
@@ -22,16 +23,51 @@ export default function NewLogPage({
   const [statusText, setStatusText] = useState("저장 중...");
   const [error, setError] = useState<string | null>(null);
 
+  const [cropQueue, setCropQueue] = useState<File[]>([]);
+  const [cropTotal, setCropTotal] = useState(0);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState("photo.jpg");
+
   function toggleTag(tag: EventTag) {
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
     );
   }
 
+  function openNextInQueue(queue: File[]) {
+    if (queue.length === 0) {
+      setCropSrc(null);
+      return;
+    }
+    setCropSrc(URL.createObjectURL(queue[0]));
+    setCropFileName(queue[0].name);
+  }
+
   function handlePhotosChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    setPhotoFiles(files);
-    setPhotoPreviews(files.map((f) => URL.createObjectURL(f)));
+    if (files.length === 0) return;
+    setCropTotal(files.length);
+    setCropQueue(files);
+    openNextInQueue(files);
+    e.target.value = "";
+  }
+
+  function handleCropDone(file: File) {
+    setPhotoFiles((prev) => [...prev, file]);
+    setPhotoPreviews((prev) => [...prev, URL.createObjectURL(file)]);
+    setCropQueue((prev) => {
+      const rest = prev.slice(1);
+      openNextInQueue(rest);
+      return rest;
+    });
+  }
+
+  function handleCropSkip() {
+    setCropQueue((prev) => {
+      const rest = prev.slice(1);
+      openNextInQueue(rest);
+      return rest;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -184,6 +220,17 @@ export default function NewLogPage({
           {submitting ? statusText : "기록 저장"}
         </button>
       </form>
+
+      {cropSrc && (
+        <ImageCropper
+          imageSrc={cropSrc}
+          fileName={cropFileName}
+          title={`사진 ${cropTotal - cropQueue.length + 1}/${cropTotal}`}
+          cancelLabel="이 사진 건너뛰기"
+          onCancel={handleCropSkip}
+          onDone={handleCropDone}
+        />
+      )}
     </main>
   );
 }
