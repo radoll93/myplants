@@ -41,11 +41,16 @@ export default async function PlantDetailPage({
         <Link href="/" className="text-sm text-stone-500">
           ← 목록으로
         </Link>
-        <DeletePlantButton
-          plantId={p.id}
-          nickname={p.nickname}
-          photoUrls={allPhotoUrls}
-        />
+        <div className="flex items-center gap-3">
+          <Link href={`/plants/${p.id}/edit`} className="text-sm text-stone-500">
+            수정
+          </Link>
+          <DeletePlantButton
+            plantId={p.id}
+            nickname={p.nickname}
+            photoUrls={allPhotoUrls}
+          />
+        </div>
       </div>
 
       <div className="mt-3 aspect-square w-full overflow-hidden rounded-xl bg-stone-100">
