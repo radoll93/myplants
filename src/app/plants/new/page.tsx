@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 import { compressImage } from "@/lib/image";
 import { generateId } from "@/lib/id";
 import { GROWTH_TYPES, LIGHT_LEVELS } from "@/lib/types";
+import type { GrowthType, LightLevel } from "@/lib/types";
+import type { SpeciesCandidate } from "@/app/api/identify-species/route";
 
 export default function NewPlantPage() {
   const router = useRouter();
@@ -15,10 +17,63 @@ export default function NewPlantPage() {
   const [statusText, setStatusText] = useState("저장 중...");
   const [error, setError] = useState<string | null>(null);
 
+  const [speciesCommon, setSpeciesCommon] = useState("");
+  const [speciesScientific, setSpeciesScientific] = useState("");
+  const [growthType, setGrowthType] = useState<GrowthType | "">("");
+  const [lightLevel, setLightLevel] = useState<LightLevel | "">("");
+  const [wateringCriteria, setWateringCriteria] = useState("");
+  const [origin, setOrigin] = useState("");
+  const [identifying, setIdentifying] = useState(false);
+  const [candidates, setCandidates] = useState<SpeciesCandidate[] | null>(null);
+  const [identifyError, setIdentifyError] = useState<string | null>(null);
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
     setPhotoFile(file);
     setPhotoPreview(file ? URL.createObjectURL(file) : null);
+    setCandidates(null);
+    setIdentifyError(null);
+  }
+
+  async function handleIdentify() {
+    if (!photoFile) return;
+    setIdentifying(true);
+    setIdentifyError(null);
+    setCandidates(null);
+
+    try {
+      const compressed = await compressImage(photoFile);
+      const body = new FormData();
+      body.append("image", compressed, "photo.jpg");
+
+      const res = await fetch("/api/identify-species", {
+        method: "POST",
+        body,
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "식별에 실패했어요.");
+      if (!data.candidates || data.candidates.length === 0) {
+        setIdentifyError("비슷한 종을 찾지 못했어요. 직접 입력해주세요.");
+        return;
+      }
+      setCandidates(data.candidates);
+    } catch (err) {
+      setIdentifyError(
+        err instanceof Error ? err.message : "식별 중 오류가 발생했어요."
+      );
+    } finally {
+      setIdentifying(false);
+    }
+  }
+
+  function applyCandidate(c: SpeciesCandidate) {
+    setSpeciesScientific(c.scientificName);
+    setSpeciesCommon(c.koreanName || c.commonName || "");
+    if (c.growthType) setGrowthType(c.growthType);
+    if (c.lightLevel) setLightLevel(c.lightLevel);
+    if (c.wateringCriteria) setWateringCriteria(c.wateringCriteria);
+    if (c.origin) setOrigin(c.origin);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -60,14 +115,12 @@ export default function NewPlantPage() {
         .from("plants")
         .insert({
           nickname,
-          species_common: String(formData.get("species_common") || "") || null,
-          species_scientific:
-            String(formData.get("species_scientific") || "") || null,
-          origin: String(formData.get("origin") || "") || null,
-          growth_type: String(formData.get("growth_type") || "") || null,
-          watering_criteria:
-            String(formData.get("watering_criteria") || "") || null,
-          light_level: String(formData.get("light_level") || "") || null,
+          species_common: speciesCommon.trim() || null,
+          species_scientific: speciesScientific.trim() || null,
+          origin: origin.trim() || null,
+          growth_type: growthType || null,
+          watering_criteria: wateringCriteria.trim() || null,
+          light_level: lightLevel || null,
           location: String(formData.get("location") || "") || null,
           photo_url: photoUrl,
         })
@@ -111,6 +164,53 @@ export default function NewPlantPage() {
               onChange={handlePhotoChange}
             />
           </label>
+
+          {photoFile && (
+            <button
+              type="button"
+              onClick={handleIdentify}
+              disabled={identifying}
+              className="mt-2 w-full rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 disabled:opacity-60"
+            >
+              {identifying ? "종 식별 중..." : "🔍 AI로 종 추천받기"}
+            </button>
+          )}
+
+          {identifyError && (
+            <p className="mt-2 text-sm text-red-600">{identifyError}</p>
+          )}
+
+          {candidates && (
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-xs text-stone-500">
+                다육·선인장은 AI 정확도가 낮을 수 있어요. 종 이름과 관리
+                정보는 참고용이니 꼭 확인 후 수정해주세요.
+              </p>
+              {candidates.map((c, i) => (
+                <button
+                  type="button"
+                  key={i}
+                  onClick={() => applyCandidate(c)}
+                  className="flex items-center justify-between rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-sm hover:border-emerald-400"
+                >
+                  <span>
+                    <span className="italic text-stone-800">
+                      {c.scientificName}
+                    </span>
+                    {(c.koreanName || c.commonName) && (
+                      <span className="text-stone-500">
+                        {" "}
+                        · {c.koreanName || c.commonName}
+                      </span>
+                    )}
+                  </span>
+                  <span className="ml-2 flex-shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
+                    {Math.round(c.score * 100)}%
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <Field label="별명 *">
@@ -124,19 +224,25 @@ export default function NewPlantPage() {
 
         <Field label="일반명 / 학명">
           <input
-            name="species_common"
+            value={speciesCommon}
+            onChange={(e) => setSpeciesCommon(e.target.value)}
             placeholder="예: 에케베리아 노바"
             className={inputClass}
           />
           <input
-            name="species_scientific"
+            value={speciesScientific}
+            onChange={(e) => setSpeciesScientific(e.target.value)}
             placeholder="예: Echeveria 'Nova'"
             className={`${inputClass} mt-2`}
           />
         </Field>
 
         <Field label="생장기 타입">
-          <select name="growth_type" className={inputClass} defaultValue="">
+          <select
+            value={growthType}
+            onChange={(e) => setGrowthType(e.target.value as GrowthType)}
+            className={inputClass}
+          >
             <option value="" disabled>
               선택해주세요
             </option>
@@ -149,7 +255,11 @@ export default function NewPlantPage() {
         </Field>
 
         <Field label="광량">
-          <select name="light_level" className={inputClass} defaultValue="">
+          <select
+            value={lightLevel}
+            onChange={(e) => setLightLevel(e.target.value as LightLevel)}
+            className={inputClass}
+          >
             <option value="" disabled>
               선택해주세요
             </option>
@@ -163,14 +273,20 @@ export default function NewPlantPage() {
 
         <Field label="물주기 기준">
           <input
-            name="watering_criteria"
+            value={wateringCriteria}
+            onChange={(e) => setWateringCriteria(e.target.value)}
             placeholder="예: 흙이 완전히 마르면"
             className={inputClass}
           />
         </Field>
 
         <Field label="원산지">
-          <input name="origin" placeholder="예: 남아프리카" className={inputClass} />
+          <input
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value)}
+            placeholder="예: 남아프리카"
+            className={inputClass}
+          />
         </Field>
 
         <Field label="위치">

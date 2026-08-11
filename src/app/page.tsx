@@ -1,14 +1,16 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import type { Plant } from "@/lib/types";
+import { getSeoulWeather } from "@/lib/weather";
+import { generateCoaching } from "@/lib/coaching";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const { data: plants, error } = await supabase
-    .from("plants")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const [{ data: plants, error }, weather] = await Promise.all([
+    supabase.from("plants").select("*").order("created_at", { ascending: false }),
+    getSeoulWeather(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
@@ -21,6 +23,40 @@ export default async function Home() {
           + 등록
         </Link>
       </div>
+
+      {plants && plants.length > 0 && (
+        <div className="mt-5">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-stone-700">
+              오늘의 코칭
+            </h2>
+            {weather && (
+              <p className="text-xs text-stone-400">
+                서울 {weather.tempNow}°C (최고 {weather.tempMax}°C) ·{" "}
+                {weather.description}
+              </p>
+            )}
+          </div>
+          <div className="mt-2 flex gap-3 overflow-x-auto pb-1">
+            {plants.map((plant: Plant) => {
+              const tips = generateCoaching(plant, weather);
+              return (
+                <div
+                  key={plant.id}
+                  className="w-56 flex-shrink-0 rounded-xl border border-emerald-100 bg-emerald-50 p-3"
+                >
+                  <p className="text-sm font-medium text-emerald-900">
+                    {plant.nickname}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-emerald-800">
+                    {tips[0]}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {error && (
         <p className="mt-6 text-sm text-red-600">

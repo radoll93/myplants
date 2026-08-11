@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Plant, PlantLog } from "@/lib/types";
+import { getSeoulWeather } from "@/lib/weather";
+import { generateCoaching } from "@/lib/coaching";
+import DeletePlantButton from "./delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -12,24 +15,38 @@ export default async function PlantDetailPage({
 }) {
   const { id } = await params;
 
-  const [{ data: plant, error: plantError }, { data: logs }] = await Promise.all([
-    supabase.from("plants").select("*").eq("id", id).single(),
-    supabase
-      .from("logs")
-      .select("*")
-      .eq("plant_id", id)
-      .order("log_date", { ascending: false }),
-  ]);
+  const [{ data: plant, error: plantError }, { data: logs }, weather] =
+    await Promise.all([
+      supabase.from("plants").select("*").eq("id", id).single(),
+      supabase
+        .from("logs")
+        .select("*")
+        .eq("plant_id", id)
+        .order("log_date", { ascending: false }),
+      getSeoulWeather(),
+    ]);
 
   if (plantError || !plant) notFound();
 
   const p = plant as Plant;
+  const tips = generateCoaching(p, weather);
+  const allPhotoUrls = [
+    ...(p.photo_url ? [p.photo_url] : []),
+    ...(logs ?? []).flatMap((log: PlantLog) => log.photos),
+  ];
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
-      <Link href="/" className="text-sm text-stone-500">
-        ← 목록으로
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/" className="text-sm text-stone-500">
+          ← 목록으로
+        </Link>
+        <DeletePlantButton
+          plantId={p.id}
+          nickname={p.nickname}
+          photoUrls={allPhotoUrls}
+        />
+      </div>
 
       <div className="mt-3 aspect-square w-full overflow-hidden rounded-xl bg-stone-100">
         {p.photo_url && (
@@ -59,6 +76,17 @@ export default async function PlantDetailPage({
         <InfoItem label="위치" value={p.location} />
         <InfoItem label="원산지" value={p.origin} />
         <InfoItem label="마지막 급수" value={p.last_watered_at} />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+        <p className="text-sm font-semibold text-emerald-900">오늘의 코칭</p>
+        <ul className="mt-2 flex flex-col gap-1.5">
+          {tips.map((tip, i) => (
+            <li key={i} className="text-sm leading-5 text-emerald-800">
+              · {tip}
+            </li>
+          ))}
+        </ul>
       </div>
 
       <div className="mt-6 flex items-center justify-between">
