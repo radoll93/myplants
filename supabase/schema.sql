@@ -49,3 +49,15 @@ create policy "public delete plant-photos" on storage.objects
 
 create policy "public select plant-photos" on storage.objects
   for select to anon using (bucket_id = 'plant-photos');
+
+-- 푸시 알림 구독 정보 테이블
+create table if not exists push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null
+);
+
+alter table push_subscriptions enable row level security;
+create policy "allow all on push_subscriptions" on push_subscriptions for all using (true) with check (true);

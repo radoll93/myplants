@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import type { Plant } from "@/lib/types";
 import { getSeoulWeather } from "@/lib/weather";
 import { generateCoaching } from "@/lib/coaching";
+import NotificationSetup from "@/components/NotificationSetup";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,8 @@ export default async function Home() {
           + 등록
         </Link>
       </div>
+
+      <NotificationSetup />
 
       {plants && plants.length > 0 && (
         <div className="mt-5">

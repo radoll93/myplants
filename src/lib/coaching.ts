@@ -1,13 +1,6 @@
 import type { Plant } from "./types";
 import type { SeoulWeather } from "./weather";
-
-function seoulMonth(): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Seoul",
-    month: "numeric",
-  }).formatToParts(new Date());
-  return Number(parts.find((p) => p.type === "month")?.value ?? new Date().getMonth() + 1);
-}
+import { seoulMonth, isSummerMonth, isWinterMonth } from "./season";
 
 function daysSince(dateStr: string | null): number | null {
   if (!dateStr) return null;
@@ -21,8 +14,8 @@ export function generateCoaching(
   weather: SeoulWeather | null
 ): string[] {
   const month = seoulMonth();
-  const isSummer = month >= 6 && month <= 8;
-  const isWinter = month === 12 || month <= 2;
+  const isSummer = isSummerMonth(month);
+  const isWinter = isWinterMonth(month);
   const days = daysSince(plant.last_watered_at);
 
   const tips: string[] = [];
