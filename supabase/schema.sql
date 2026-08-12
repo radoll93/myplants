@@ -61,3 +61,15 @@ create table if not exists push_subscriptions (
 
 alter table push_subscriptions enable row level security;
 create policy "allow all on push_subscriptions" on push_subscriptions for all using (true) with check (true);
+
+-- 발송된 알림 기록 (앱에서 지난 알림을 다시 확인하기 위함)
+create table if not exists notifications (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  title text not null,
+  body text not null,
+  plant_names text[] not null default '{}'
+);
+
+alter table notifications enable row level security;
+create policy "allow all on notifications" on notifications for all using (true) with check (true);

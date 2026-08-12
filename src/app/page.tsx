@@ -1,28 +1,58 @@
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import type { Plant } from "@/lib/types";
+import { GROWTH_TYPES, type Plant } from "@/lib/types";
 import { getSeoulWeather } from "@/lib/weather";
 import { generateCoaching } from "@/lib/coaching";
 import NotificationSetup from "@/components/NotificationSetup";
+import NotificationBell from "@/components/NotificationBell";
 
 export const dynamic = "force-dynamic";
 
+const GROUP_ORDER = [...GROWTH_TYPES, "미지정"] as const;
+
+function groupByGrowthType(plants: Plant[]) {
+  const groups = new Map<string, Plant[]>();
+  for (const type of GROUP_ORDER) groups.set(type, []);
+
+  for (const plant of plants) {
+    const key = plant.growth_type ?? "미지정";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(plant);
+  }
+
+  return [...groups.entries()].filter(([, list]) => list.length > 0);
+}
+
 export default async function Home() {
-  const [{ data: plants, error }, weather] = await Promise.all([
-    supabase.from("plants").select("*").order("created_at", { ascending: false }),
-    getSeoulWeather(),
-  ]);
+  const [{ data: plants, error }, weather, { data: latestNotification }] =
+    await Promise.all([
+      supabase.from("plants").select("*").order("created_at", { ascending: false }),
+      getSeoulWeather(),
+      supabase
+        .from("notifications")
+        .select("created_at")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+  const groups = groupByGrowthType(plants ?? []);
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="text-xl font-semibold text-stone-800">내 다육이들</h1>
-        <Link
-          href="/plants/new"
-          className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
-        >
-          + 등록
-        </Link>
+        <div className="flex items-center gap-2">
+          <NotificationBell
+            latestCreatedAt={latestNotification?.created_at ?? null}
+          />
+          <Link
+            href="/plants/new"
+            className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white"
+          >
+            + 등록
+          </Link>
+        </div>
       </div>
 
       <NotificationSetup />
@@ -79,34 +109,46 @@ export default async function Home() {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        {plants?.map((plant: Plant) => (
-          <Link
-            key={plant.id}
-            href={`/plants/${plant.id}`}
-            className="overflow-hidden rounded-xl border border-stone-200 bg-white"
-          >
-            <div className="aspect-square w-full bg-stone-100">
-              {plant.photo_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={plant.photo_url}
-                  alt={plant.nickname}
-                  className="h-full w-full object-cover"
-                />
-              )}
+      <div className="mt-6 flex flex-col gap-6">
+        {groups.map(([growthType, groupPlants]) => (
+          <div key={growthType}>
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-700">
+              {growthType}
+              <span className="text-xs font-normal text-stone-400">
+                {groupPlants.length}개
+              </span>
+            </h2>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              {groupPlants.map((plant) => (
+                <Link
+                  key={plant.id}
+                  href={`/plants/${plant.id}`}
+                  className="overflow-hidden rounded-xl border border-stone-200 bg-white"
+                >
+                  <div className="aspect-square w-full bg-stone-100">
+                    {plant.photo_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={plant.photo_url}
+                        alt={plant.nickname}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="truncate text-sm font-medium text-stone-800">
+                      {plant.nickname}
+                    </p>
+                    {plant.species_common && (
+                      <p className="truncate text-xs text-stone-500">
+                        {plant.species_common}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
             </div>
-            <div className="p-2">
-              <p className="truncate text-sm font-medium text-stone-800">
-                {plant.nickname}
-              </p>
-              {plant.species_common && (
-                <p className="truncate text-xs text-stone-500">
-                  {plant.species_common}
-                </p>
-              )}
-            </div>
-          </Link>
+          </div>
         ))}
       </div>
     </main>

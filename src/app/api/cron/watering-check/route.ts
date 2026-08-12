@@ -34,6 +34,12 @@ export async function GET(req: NextRequest) {
       ? `${thirsty[0].nickname}에 물을 줄 때예요.`
       : `${thirsty[0].nickname} 외 ${thirsty.length - 1}개 화분에 물을 줄 때예요.`;
 
+  await supabase.from("notifications").insert({
+    title,
+    body,
+    plant_names: thirsty.map((p: Plant) => p.nickname),
+  });
+
   const { data: subscriptions } = await supabase
     .from("push_subscriptions")
     .select("*");
@@ -46,7 +52,7 @@ export async function GET(req: NextRequest) {
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth },
         },
-        JSON.stringify({ title, body, url: "/" })
+        JSON.stringify({ title, body, url: "/notifications" })
       );
       sent++;
     } catch (err: unknown) {
