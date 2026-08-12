@@ -9,13 +9,7 @@ import { GROWTH_TYPES, LIGHT_LEVELS } from "@/lib/types";
 import type { GrowthType, LightLevel, Plant } from "@/lib/types";
 import type { SpeciesCandidate } from "@/app/api/identify-species/route";
 import ImageCropper from "./ImageCropper";
-
-function extractStoragePath(url: string): string | null {
-  const marker = "/plant-photos/";
-  const idx = url.indexOf(marker);
-  if (idx === -1) return null;
-  return url.slice(idx + marker.length);
-}
+import { extractStoragePath } from "@/lib/storagePath";
 
 export default function PlantForm({ plant }: { plant?: Plant }) {
   const isEdit = Boolean(plant);

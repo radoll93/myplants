@@ -5,13 +5,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { extractStoragePath } from "@/lib/storagePath";
 
-export default function DeletePlantButton({
-  plantId,
-  nickname,
+export default function DeleteLogButton({
+  logId,
   photoUrls,
 }: {
-  plantId: string;
-  nickname: string;
+  logId: string;
   photoUrls: string[];
 }) {
   const router = useRouter();
@@ -19,7 +17,7 @@ export default function DeletePlantButton({
 
   async function handleDelete() {
     const confirmed = window.confirm(
-      `"${nickname}"을(를) 삭제할까요? 기록과 사진도 함께 삭제되고 되돌릴 수 없어요.`
+      "이 기록을 삭제할까요? 사진도 함께 삭제되고 되돌릴 수 없어요."
     );
     if (!confirmed) return;
 
@@ -32,10 +30,9 @@ export default function DeletePlantButton({
         await supabase.storage.from("plant-photos").remove(paths);
       }
 
-      const { error } = await supabase.from("plants").delete().eq("id", plantId);
+      const { error } = await supabase.from("logs").delete().eq("id", logId);
       if (error) throw error;
 
-      router.push("/");
       router.refresh();
     } catch {
       window.alert("삭제 중 문제가 발생했어요. 다시 시도해주세요.");
@@ -48,9 +45,9 @@ export default function DeletePlantButton({
       type="button"
       onClick={handleDelete}
       disabled={deleting}
-      className="text-sm text-red-500 disabled:opacity-50"
+      className="text-xs text-red-500 disabled:opacity-50"
     >
-      {deleting ? "삭제 중..." : "이 화분 삭제"}
+      {deleting ? "삭제 중..." : "삭제"}
     </button>
   );
 }

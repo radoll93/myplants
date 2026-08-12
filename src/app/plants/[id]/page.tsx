@@ -5,6 +5,7 @@ import type { Plant, PlantLog } from "@/lib/types";
 import { getSeoulWeather } from "@/lib/weather";
 import { generateCoaching } from "@/lib/coaching";
 import DeletePlantButton from "./delete-button";
+import DeleteLogButton from "./delete-log-button";
 
 export const dynamic = "force-dynamic";
 
@@ -131,15 +132,18 @@ export default async function PlantDetailPage({
               <p className="text-sm font-medium text-stone-700">
                 {log.log_date}
               </p>
-              <div className="flex gap-1">
-                {log.event_tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700"
-                  >
-                    {tag}
-                  </span>
-                ))}
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  {log.event_tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <DeleteLogButton logId={log.id} photoUrls={log.photos} />
               </div>
             </div>
             {log.photos.length > 0 && (
